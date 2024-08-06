@@ -41,15 +41,17 @@ FDCAN_TxHeaderTypeDef TxHeader;
 FDCAN_RxHeaderTypeDef RxHeader;
 FDCAN_FilterTypeDef sFilterConfig;
 
-uint8_t TxData[8] = {};
+uint8_t TxData1[8] = {};
+uint8_t TxData2[8]={};
 uint8_t RxData[8] = {};
 uint32_t TxMailbox;
 
 uint8_t buffer[1] = {};
 uint8_t size = 1;
 int8_t datapos=-1;
-uint8_t data[5];
-uint16_t vel_CANID = 0x300;
+uint8_t data[9];
+uint16_t FIRSTCANID = 0x300;
+uint16_t SECONDCANID = 0x301;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -82,8 +84,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }else if(datapos>=0){
         data[datapos++]=buffer[0];
     }
-    if(datapos>=5){
-    	memcpy(TxData,data,5);
+    if(datapos>=9){
+    	memcpy(TxData1,data,8);
+    	TxData2[0]= data[8];
         datapos=-1;
     }
 
@@ -108,7 +111,7 @@ void FDCAN_RxTxSettings(void){
 	FDCAN_Filter_settings.FilterID1 = 0x200;
 	FDCAN_Filter_settings.FilterID2 = 0x310;
 
-	TxHeader.Identifier = vel_CANID;
+	TxHeader.Identifier = FIRSTCANID;
 	TxHeader.IdType = FDCAN_STANDARD_ID;
 	TxHeader.TxFrameType = FDCAN_DATA_FRAME;
 	TxHeader.DataLength = FDCAN_DLC_BYTES_8;
@@ -139,6 +142,7 @@ void FDCAN_RxTxSettings(void){
 		Error_Handler();
 	}
 }
+
 
 
 int _write(int file, char *ptr, int len)
@@ -193,11 +197,16 @@ int main(void)
   HAL_UART_Receive_IT(&huart1, buffer, size);
   while (1)
   {
-	  printf("(%x,%x)\r\n",TxData[0], TxData[1]);
-
-	  if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData) != HAL_OK){
-		  printf("addmessage is error\r\n");
+	  printf("(%d,%d)\r\n",(int8_t)TxData1[0], (int8_t)TxData1[1]);
+	  TxHeader.Identifier = FIRSTCANID;
+	  if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData1) != HAL_OK){
+		  printf("addmessage1 is error\r\n");
 		  Error_Handler();
+	  }
+	  TxHeader.Identifier = SECONDCANID;
+	  if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData2) != HAL_OK){
+	      printf("addmessage2 is error\r\n");
+	  	  Error_Handler();
 	  }
 	  HAL_Delay(1);
     /* USER CODE END WHILE */
